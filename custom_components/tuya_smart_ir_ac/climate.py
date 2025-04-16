@@ -37,6 +37,12 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
     def __init__(self, config, coordinator, registry):
         TuyaClimateEntity.__init__(self, config, registry)
         super().__init__(coordinator, context=self._climate_id)
+        self._current_temperature = 0
+        self._current_humidity = 0
+        self._name = climate[NAME]
+        self._ac_mode = False
+        self._current_hvac_mode = HVACMode.OFF
+
 
     @property
     def name(self):
@@ -77,12 +83,16 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
     @property
     def current_temperature(self):
         sensor_state = self.hass.states.get(self._temperature_sensor) if self._temperature_sensor is not None else None
-        return float(sensor_state.state) if valid_sensor_state(sensor_state) else None
+        self._current_temperature = float(sensor_state.state) if valid_sensor_state(sensor_state) else 0
+        return self._current_temperature
+        # return float(sensor_state.state) if valid_sensor_state(sensor_state) else None
 
     @property
     def current_humidity(self):
         sensor_state = self.hass.states.get(self._humidity_sensor) if self._humidity_sensor is not None else None
-        return float(sensor_state.state) if valid_sensor_state(sensor_state) else None
+        self._current_humidity = float(sensor_state.state) if valid_sensor_state(sensor_state) else 0
+        # return float(sensor_state.state) if valid_sensor_state(sensor_state) else None
+        return self._current_humidity
 
     @property
     def hvac_modes(self):
@@ -112,12 +122,13 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
             self.async_write_ha_state()
 
     @callback
-    def _handle_coordinator_update(self):
+    async def _handle_coordinator_update(self):
         data = self.coordinator.data.get(self._climate_id)
         if data:
             self._attr_hvac_mode = data.hvac_mode if data.power else HVACMode.OFF
             self._attr_target_temperature = data.temperature
             self._attr_fan_mode = data.fan_mode
+            self._async_control_cooling()
             self.async_write_ha_state()
 
     async def async_turn_on(self):
@@ -151,9 +162,36 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         temperature = self.get_hvac_temperature(hvac_mode)
         fan_mode = self.get_hvac_fan_mode(hvac_mode)
         if hvac_mode is HVACMode.OFF:
+            self._ac_mode = False
             await self.coordinator.async_turn_off(self._infrared_id, self._climate_id)
         else:
             if self.get_hvac_power_on(self._attr_hvac_mode):
+                self._ac_mode = True
                 await self.coordinator.async_turn_on(self._infrared_id, self._climate_id)
             await self.coordinator.async_set_hvac_mode(self._infrared_id, self._climate_id, hvac_mode, temperature, fan_mode)
         self._handle_coordinator_update()
+
+    async def _async_control_cooling(self):
+        """Check if we need to turn ac on or off."""
+        too_cold = self._current_temperature <= float(self._attr_target_temperature) - 1.5
+        too_hot = self._current_temperature >= float(self._attr_target_temperature)
+        _LOGGER.info("current_temperature %.1f", self._current_temperature)
+        _LOGGER.info("current_humidity %.1f", self._current_humidity)
+        _LOGGER.info("self._ac_mode %s", self._ac_mode)
+        _LOGGER.info("self._attr_hvac_mode %s", self._attr_hvac_mode)
+        _LOGGER.info("too_cold %s", too_cold)
+        _LOGGER.info("too_hot %s", too_hot)
+
+        if self._attr_hvac_mode == HVACMode.COOL:
+            if self._ac_mode and too_cold:
+                _LOGGER.info(
+                    "Too Cold - AC Turn Off current_temperature %.1f",
+                    self._current_temperature,
+                )
+                await self._api.async_turn_off()
+            elif (self._ac_mode and too_hot) or (not self._ac_mode and too_cold):
+                _LOGGER.info(
+                    "Too Hot - AC Turn On current_temperature %.1f",
+                    self._current_temperature,
+                )
+                await self._api.async_set_hvac_mode(HVACMode.COOL)
