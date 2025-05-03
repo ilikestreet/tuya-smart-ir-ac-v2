@@ -166,6 +166,13 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         else:
             self._attr_hvac_action = HVACAction.IDLE
 
+
+        # Automatically turn off if HVAC action is idle and mode is COOL or HEAT
+        if self._attr_hvac_action == HVACAction.IDLE and self._attr_hvac_mode in [HVACMode.COOL, HVACMode.HEAT]:
+            _LOGGER.info(f"{self.entity_id} is idle, turning off")
+            self.hass.async_create_task(self.async_turn_off())
+            return  # Exit to avoid writing state twice
+
         self.async_write_ha_state()
 
     async def async_turn_on(self):
