@@ -36,6 +36,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEntity):
     def __init__(self, config, coordinator, registry):
+        self._previous_hvac_mode = HVACMode.OFF
         TuyaClimateEntity.__init__(self, config, registry)
         super().__init__(coordinator, context=self._climate_id)
 
@@ -194,8 +195,8 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
             should_heat = self._previous_hvac_mode == HVACMode.HEAT and current_temp < target_temp
             should_cool = self._previous_hvac_mode == HVACMode.COOL and current_temp > target_temp
             if should_heat or should_cool:
-                _LOGGER.info(f"{self.entity_id} needs to resume {_hvac_str := 'heating' if should_heat else 'cooling'} — turning on")
-                self.hass.async_create_task(self.async_turn_on())
+                _LOGGER.info(f"{self.entity_id} needs to resume {self._previous_hvac_mode} — turning on")
+                self.hass.async_create_task(self._auto_resume_previous_mode())
                 return
 
         self.async_write_ha_state()
@@ -236,4 +237,16 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
             if self.get_hvac_power_on(self._attr_hvac_mode):
                 await self.coordinator.async_turn_on(self._infrared_id, self._climate_id)
             await self.coordinator.async_set_hvac_mode(self._infrared_id, self._climate_id, hvac_mode, temperature, fan_mode)
+        self._handle_coordinator_update()
+
+    async def _auto_resume_previous_mode(self):
+        temperature = self.get_hvac_temperature(self._previous_hvac_mode)
+        fan_mode = self.get_hvac_fan_mode(self._previous_hvac_mode)
+        await self.coordinator.async_turn_on(self._infrared_id, self._climate_id)
+        await self.coordinator.async_set_hvac_mode(
+            self._infrared_id, self._climate_id,
+            self._previous_hvac_mode,
+            temperature,
+            fan_mode
+        )
         self._handle_coordinator_update()
