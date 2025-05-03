@@ -7,6 +7,7 @@ from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     FAN_AUTO,
     HVACMode,
+    HVACAction,
     ClimateEntityFeature
 )
 from homeassistant.const import (
