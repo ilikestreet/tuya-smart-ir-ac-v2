@@ -161,6 +161,8 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         power = data.power
         hvac_mode = data.hvac_mode
 
+        _LOGGER.info(f"current_temperature {current_temp}")
+
         self._attr_target_temperature = target_temp
         self._attr_fan_mode = fan_mode
 
