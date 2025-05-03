@@ -92,6 +92,32 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
     def fan_modes(self):
         return self._fan_modes
 
+    @property
+    def hvac_action(self):
+        """Return the current running hvac operation."""
+        if self._attr_hvac_mode == HVACMode.OFF:
+            return HVACAction.OFF
+
+        current_temp = self.current_temperature
+        target_temp = self.target_temperature
+
+        if current_temp is None or target_temp is None:
+            return HVACAction.IDLE
+
+        if self._attr_hvac_mode == HVACMode.COOL:
+            return HVACAction.COOLING if current_temp > target_temp else HVACAction.IDLE
+
+        if self._attr_hvac_mode == HVACMode.HEAT:
+            return HVACAction.HEATING if current_temp < target_temp else HVACAction.IDLE
+
+        if self._attr_hvac_mode == HVACMode.DRY:
+            return HVACAction.DRYING
+
+        if self._attr_hvac_mode == HVACMode.FAN_ONLY:
+            return HVACAction.FAN
+
+        return HVACAction.IDLE
+
     async def async_added_to_hass(self):
         await super().async_added_to_hass()
         self.load_optional_entities()
@@ -114,11 +140,32 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
     @callback
     def _handle_coordinator_update(self):
         data = self.coordinator.data.get(self._climate_id)
-        if data:
-            self._attr_hvac_mode = data.hvac_mode if data.power else HVACMode.OFF
-            self._attr_target_temperature = data.temperature
-            self._attr_fan_mode = data.fan_mode
-            self.async_write_ha_state()
+        if not data:
+            return
+
+        self._attr_hvac_mode = data.hvac_mode if data.power else HVACMode.OFF
+        self._attr_target_temperature = data.temperature
+        self._attr_fan_mode = data.fan_mode
+
+        # Determine current temperature
+        current_temp = self.current_temperature
+        target_temp = self._attr_target_temperature
+
+        # Determine hvac_action based on mode and temperatures
+        if self._attr_hvac_mode == HVACMode.OFF or current_temp is None or target_temp is None:
+            self._attr_hvac_action = HVACAction.OFF
+        elif self._attr_hvac_mode == HVACMode.COOL:
+            self._attr_hvac_action = HVACAction.COOLING if current_temp > target_temp else HVACAction.IDLE
+        elif self._attr_hvac_mode == HVACMode.HEAT:
+            self._attr_hvac_action = HVACAction.HEATING if current_temp < target_temp else HVACAction.IDLE
+        elif self._attr_hvac_mode == HVACMode.DRY:
+            self._attr_hvac_action = HVACAction.DRYING
+        elif self._attr_hvac_mode == HVACMode.FAN_ONLY:
+            self._attr_hvac_action = HVACAction.FAN
+        else:
+            self._attr_hvac_action = HVACAction.IDLE
+
+        self.async_write_ha_state()
 
     async def async_turn_on(self):
         _LOGGER.info(f"{self.entity_id} turn on")
