@@ -29,7 +29,7 @@ class TuyaCoordinator(DataUpdateCoordinator):
             _LOGGER,
             name=DOMAIN,
             update_interval=timedelta(seconds=FIRST_UPDATE),
-            always_update=False
+            always_update=True
         )
         self._api = TuyaClimateAPI(hass)
         self._first_update = True

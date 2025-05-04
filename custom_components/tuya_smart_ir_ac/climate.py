@@ -154,12 +154,15 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         data = self.coordinator.data.get(self._climate_id)
         if not data:
             return
-        self._async_control_cooling(data)
+        self._attr_hvac_mode = data.hvac_mode if data.power else HVACMode.OFF
+        self._attr_target_temperature = data.temperature
+        self._attr_fan_mode = data.fan_mode
         self.async_write_ha_state()
 
 
-    async def update(self):
-        self._handle_coordinator_update()
+    def update(self):
+        _LOGGER.info(f"test message {self.current_temperature}")
+        self.async_write_ha_state()
 
     async def async_turn_on(self):
         _LOGGER.info(f"{self.entity_id} turn on")
@@ -215,49 +218,19 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
 
 
 
-    def _async_control_cooling(self, data):
+    def _async_control_cooling(self):
         """Check if we need to turn ac on or off."""
         # Read updated values
         current_temp = self.current_temperature
-        target_temp = data.temperature
-        fan_mode = data.fan_mode
-        power = data.power
-        hvac_mode = data.hvac_mode
+        target_temp = self._attr_target_temperature
+        fan_mode = self._attr_fan_mode
+        hvac_mode = self._attr_hvac_mode
 
         _LOGGER.info(f"current_temperature {current_temp}")
 
-        self._attr_target_temperature = target_temp
-        self._attr_fan_mode = fan_mode
-
-        # Save last requested hvac_mode even if device is off
-        if power:
-            self._attr_hvac_mode = hvac_mode
-        else:
-            self._attr_hvac_mode = HVACMode.OFF
-
-        # Determine hvac_action
-        if not power or current_temp is None or target_temp is None:
-            self._attr_hvac_action = HVACAction.OFF
-        elif hvac_mode == HVACMode.COOL:
-            if current_temp > target_temp:
-                self._attr_hvac_action = HVACAction.COOLING
-            else:
-                self._attr_hvac_action = HVACAction.IDLE
-        elif hvac_mode == HVACMode.HEAT:
-            if current_temp < target_temp:
-                self._attr_hvac_action = HVACAction.HEATING
-            else:
-                self._attr_hvac_action = HVACAction.IDLE
-        elif hvac_mode == HVACMode.DRY:
-            self._attr_hvac_action = HVACAction.DRYING
-        elif hvac_mode == HVACMode.FAN_ONLY:
-            self._attr_hvac_action = HVACAction.FAN
-        else:
-            self._attr_hvac_action = HVACAction.IDLE
-
         # --- Auto-Off Logic ---
         if (
-            power
+            self._ac_mode
             and self._attr_hvac_action == HVACAction.IDLE
             and hvac_mode in [HVACMode.COOL, HVACMode.HEAT]
         ):
@@ -266,8 +239,10 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
             return
 
         # --- Auto-On Logic ---
-        self._attr_hvac_mode
-        if not power and self._hvac_mode in [HVACMode.COOL, HVACMode.HEAT]:
+        if (not self._ac_mode 
+            and self._attr_hvac_action == HVACAction.IDLE
+            and self._attr_hvac_mode in [HVACMode.COOL, HVACMode.HEAT]):
+
             should_heat = (
                 self._attr_hvac_mode == HVACMode.HEAT and current_temp < target_temp
             )
