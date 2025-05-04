@@ -157,10 +157,8 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         self._attr_hvac_mode = data.hvac_mode if data.power else HVACMode.OFF
         self._attr_target_temperature = data.temperature
         self._attr_fan_mode = data.fan_mode
-        _LOGGER.info(f"test message 1 {data}")
         self._async_control_cooling()
         self.async_write_ha_state()
-
 
     async def async_turn_on(self):
         _LOGGER.info(f"{self.entity_id} turn on")
@@ -213,9 +211,6 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
             )
         self._handle_coordinator_update()
 
-
-
-
     def _async_control_cooling(self):
         """Check if we need to turn ac on or off."""
         # Read updated values
@@ -224,28 +219,35 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         fan_mode = self._attr_fan_mode
         hvac_mode = self._attr_hvac_mode
 
-        _LOGGER.info(f"current_temperature {current_temp}")
-
-        # --- Auto-Off Logic ---
-        if (
+        is_auto_off = (
             self._ac_mode
             and self._attr_hvac_action == HVACAction.IDLE
             and hvac_mode in [HVACMode.COOL, HVACMode.HEAT]
-        ):
+        )
+
+        is_auto_on = (
+            not self._ac_mode
+            and self._attr_hvac_action == HVACAction.IDLE
+            and self._attr_hvac_mode in [HVACMode.COOL, HVACMode.HEAT]
+        )
+
+        _LOGGER.info(f"current_temperature {current_temp}")
+        _LOGGER.info(f"is_auto_on {is_auto_on}")
+        _LOGGER.info(f"is_auto_off {is_auto_off}")
+
+        # --- Auto-Off Logic ---
+        if is_auto_off:
             _LOGGER.info(f"{self.entity_id} is idle, turning off")
             self.hass.async_create_task(self.async_turn_off())
             return
 
         # --- Auto-On Logic ---
-        if (not self._ac_mode 
-            and self._attr_hvac_action == HVACAction.IDLE
-            and self._attr_hvac_mode in [HVACMode.COOL, HVACMode.HEAT]):
-
+        if is_auto_on:
             should_heat = (
                 self._attr_hvac_mode == HVACMode.HEAT and current_temp < target_temp
             )
             should_cool = (
-                self._attr_hvac_mode == HVACMode.COOL and current_temp >= target_temp
+                self._attr_hvac_mode == HVACMode.COOL and current_temp > target_temp
             )
             if should_heat or should_cool:
                 _LOGGER.info(
