@@ -88,17 +88,20 @@ class TuyaCoordinator(DataUpdateCoordinator):
 
             async with async_timeout.timeout(UPDATE_TIMEOUT):
                 climate_ids = set(self.async_contexts())
+                _LOGGER.info(f"test message 3 climate_ids {climate_ids}")
                 return await self.async_fetch_data(climate_ids)
         except Exception as e:
             raise UpdateFailed(f"error communicating with Tuya API {e}")
 
     async def _async_force_update_data(self, climate_id, power=None, hvac_mode=None, temperature=None, fan_mode=None):
         data = self.data.get(climate_id, None)
-        if data:
-            data.power = power if power is not None else data.power
-            data.hvac_mode = hvac_mode if hvac_mode is not None else data.hvac_mode
-            data.temperature = temperature if temperature is not None else data.temperature
-            data.fan_mode = fan_mode if fan_mode is not None else data.fan_mode
+        if not data:
+            return 
+        _LOGGER.info(f"test message 2 {data}")
+        data.power = power if power is not None else data.power
+        data.hvac_mode = hvac_mode if hvac_mode is not None else data.hvac_mode
+        data.temperature = temperature if temperature is not None else data.temperature
+        data.fan_mode = fan_mode if fan_mode is not None else data.fan_mode
 
 
 class TuyaData(object):
