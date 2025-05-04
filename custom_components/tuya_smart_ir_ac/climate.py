@@ -157,12 +157,9 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         self._attr_hvac_mode = data.hvac_mode if data.power else HVACMode.OFF
         self._attr_target_temperature = data.temperature
         self._attr_fan_mode = data.fan_mode
+        _LOGGER.info(f"test message 1 {data}")
         self.async_write_ha_state()
 
-
-    def update(self):
-        _LOGGER.info(f"test message {self.current_temperature}")
-        self.async_write_ha_state()
 
     async def async_turn_on(self):
         _LOGGER.info(f"{self.entity_id} turn on")
