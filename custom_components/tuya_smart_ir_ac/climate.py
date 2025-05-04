@@ -157,6 +157,10 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         self._async_control_cooling(data)
         self.async_write_ha_state()
 
+
+    async def update(self):
+        self._handle_coordinator_update()
+
     async def async_turn_on(self):
         _LOGGER.info(f"{self.entity_id} turn on")
         await self.coordinator.async_turn_on(self._infrared_id, self._climate_id)
