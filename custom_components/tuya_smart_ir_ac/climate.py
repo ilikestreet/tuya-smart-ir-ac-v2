@@ -158,6 +158,7 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         self._attr_target_temperature = data.temperature
         self._attr_fan_mode = data.fan_mode
         _LOGGER.info(f"test message 1 {data}")
+        self._async_control_cooling()
         self.async_write_ha_state()
 
 
