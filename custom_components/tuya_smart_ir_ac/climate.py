@@ -109,14 +109,13 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         if not self._ac_mode and self._attr_hvac_mode == HVACMode.OFF:
             return HVACAction.OFF
 
-        elif self._ac_mode and self._attr_hvac_mode == HVACMode.OFF:
-            return HVACAction.IDLE
-
         elif self._attr_hvac_mode == HVACMode.COOL:
-            return HVACAction.COOLING
+            too_cool = current_temp <= (target_temp - 1.5)
+            return HVACAction.COOLING if self._ac_mode and not too_cool else HVACAction.IDLE
 
         elif self._attr_hvac_mode == HVACMode.HEAT:
-            return HVACAction.HEATING
+            too_hot = current_temp + 1.5 >= target_temp
+            return HVACAction.HEATING if self._ac_mode and not too_hot else HVACAction.IDLE
 
         elif self._attr_hvac_mode == HVACMode.DRY:
             return HVACAction.DRYING
@@ -231,9 +230,9 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
             and self._attr_hvac_mode in [HVACMode.COOL, HVACMode.HEAT]
         )
 
-        _LOGGER.info(f"current_temperature {current_temp}")
-        _LOGGER.info(f"is_auto_on {is_auto_on}")
-        _LOGGER.info(f"is_auto_off {is_auto_off}")
+        _LOGGER.debug(f"current_temperature {current_temp}")
+        _LOGGER.debug(f"is_auto_on {is_auto_on}")
+        _LOGGER.debug(f"is_auto_off {is_auto_off}")
 
         # --- Auto-Off Logic ---
         if is_auto_off:
