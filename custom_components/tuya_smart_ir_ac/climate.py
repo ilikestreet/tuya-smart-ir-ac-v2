@@ -109,14 +109,13 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         if not self._ac_mode and self._attr_hvac_mode == HVACMode.OFF:
             return HVACAction.OFF
 
-        elif self._ac_mode and self._attr_hvac_mode == HVACMode.OFF:
-            return HVACAction.IDLE
-
         elif self._attr_hvac_mode == HVACMode.COOL:
-            return HVACAction.COOLING
+            too_cool = current_temp <= (target_temp - 1.5)
+            return HVACAction.COOLING if self._ac_mode and not too_cool else HVACMode.IDLE
 
         elif self._attr_hvac_mode == HVACMode.HEAT:
-            return HVACAction.HEATING
+            too_hot = current_temp + 1.5 >= target_temp
+            return HVACAction.HEATING if self._ac_mode and not too_hot else HVACMode.IDLE
 
         elif self._attr_hvac_mode == HVACMode.DRY:
             return HVACAction.DRYING
