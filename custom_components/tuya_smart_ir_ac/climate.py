@@ -28,7 +28,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEntity):
     def __init__(self, config, coordinator, registry):
-        self._ac_mode = False
         TuyaClimateEntity.__init__(self, config, registry)
         super().__init__(coordinator, context=self._climate_id)
 
@@ -106,24 +105,29 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         current_temp = self.current_temperature
         target_temp = self.target_temperature
 
-        if not self._ac_mode and self._attr_hvac_mode == HVACMode.OFF:
+        too_cold = current_temp < float(target_temp - 1.5)
+        too_hot = float(current_temp + 1.5) >= target_temp
+
+        _LOGGER.debug(f"current_temp {current_temp}")
+        _LOGGER.debug(f"target_temp {target_temp}")
+        _LOGGER.debug(f"too_hot {too_hot}")
+        _LOGGER.debug(f"too_cold {too_cold}")
+
+
+        if self._attr_hvac_mode == HVACMode.OFF:
             return HVACAction.OFF
 
         elif self._attr_hvac_mode == HVACMode.COOL:
-            too_cool = current_temp <= (target_temp - 1.5)
-            return HVACAction.COOLING if self._ac_mode and not too_cool else HVACAction.IDLE
+            return HVACAction.COOLING if not too_cold else HVACAction.IDLE
 
         elif self._attr_hvac_mode == HVACMode.HEAT:
-            too_hot = current_temp + 1.5 >= target_temp
-            return HVACAction.HEATING if self._ac_mode and not too_hot else HVACAction.IDLE
+            return HVACAction.HEATING if not too_hot else HVACAction.IDLE
 
         elif self._attr_hvac_mode == HVACMode.DRY:
             return HVACAction.DRYING
 
         elif self._attr_hvac_mode == HVACMode.FAN_ONLY:
             return HVACAction.FAN
-
-        return HVACAction.IDLE
 
     async def async_added_to_hass(self):
         await super().async_added_to_hass()
@@ -196,11 +200,9 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         temperature = self.get_hvac_temperature(hvac_mode)
         fan_mode = self.get_hvac_fan_mode(hvac_mode)
         if hvac_mode is HVACMode.OFF:
-            self._ac_mode = False
             self._attr_hvac_mode = HVACMode.OFF
             await self.coordinator.async_turn_off(self._infrared_id, self._climate_id)
         else:
-            self._ac_mode = True
             if self.get_hvac_power_on(self._attr_hvac_mode):
                 await self.coordinator.async_turn_on(
                     self._infrared_id, self._climate_id
@@ -219,14 +221,12 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         hvac_mode = self._attr_hvac_mode
 
         is_auto_off = (
-            self._ac_mode
-            and self._attr_hvac_action == HVACAction.IDLE
+            self._attr_hvac_action == HVACAction.IDLE
             and hvac_mode in [HVACMode.COOL, HVACMode.HEAT]
         )
 
         is_auto_on = (
-            not self._ac_mode
-            and self._attr_hvac_action == HVACAction.IDLE
+            self._attr_hvac_action == HVACAction.IDLE
             and self._attr_hvac_mode in [HVACMode.COOL, HVACMode.HEAT]
         )
 
@@ -237,7 +237,7 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         # --- Auto-Off Logic ---
         if is_auto_off:
             _LOGGER.info(f"{self.entity_id} is idle, turning off")
-            self.hass.async_create_task(self.async_turn_off())
+            # self.hass.async_create_task(self.async_turn_off())
             return
 
         # --- Auto-On Logic ---
@@ -252,5 +252,5 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
                 _LOGGER.info(
                     f"{self.entity_id} needs to resume {self._attr_hvac_mode} — turning on"
                 )
-                self.hass.async_create_task(self.async_turn_on())
+                # self.hass.async_create_task(self.async_turn_on())
                 return
