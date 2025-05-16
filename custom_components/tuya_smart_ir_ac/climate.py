@@ -232,7 +232,7 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         # --- Auto-Off Logic ---
         if is_auto_off:
             _LOGGER.info(f"{self.entity_id} is idle, turning off")
-            self.hass.async_create_task(self.async_turn_off())
+            # self.hass.async_create_task(self.async_turn_off())
             return
 
         # --- Auto-On Logic ---
@@ -247,5 +247,5 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
                 _LOGGER.info(
                     f"{self.entity_id} needs to resume {self._attr_hvac_mode} — turning on"
                 )
-                self.hass.async_create_task(self.async_turn_on())
+                # self.hass.async_create_task(self.async_turn_on())
                 return
