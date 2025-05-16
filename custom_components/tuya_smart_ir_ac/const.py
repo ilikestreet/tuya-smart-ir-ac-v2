@@ -4,7 +4,8 @@ from homeassistant.components.climate import (
     FAN_LOW,
     FAN_MEDIUM,
     FAN_HIGH,
-    HVACMode
+    HVACMode,
+    HVACAction
 )
 
 
@@ -115,4 +116,12 @@ TUYA_ENDPOINTS = {
     "US": "https://openapi.tuyaus.com",
     "IN": "https://openapi.tuyain.com",
     "CN": "https://openapi.tuyacn.com"
+}
+
+HVAC_ACTIONS = {
+    HVACMode.COOL: HVACAction.COOLING,
+    HVACMode.HEAT: HVACAction.HEATING,
+    HVACMode.DRY: HVACAction.DRYING,
+    HVACMode.FAN_ONLY: HVACAction.FAN,
+    HVACMode.OFF: HVACAction.OFF
 }

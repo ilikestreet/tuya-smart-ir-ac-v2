@@ -11,7 +11,7 @@ from homeassistant.components.climate.const import (
     ClimateEntityFeature,
 )
 from homeassistant.const import EVENT_STATE_CHANGED, UnitOfTemperature
-from .const import DOMAIN, COORDINATOR, DEVICE_TYPE_CLIMATE, CONF_DEVICE_TYPE
+from .const import DOMAIN, COORDINATOR, DEVICE_TYPE_CLIMATE, CONF_DEVICE_TYPE, HVAC_ACTIONS
 from .helpers import valid_sensor_state
 from .entity import TuyaClimateEntity
 
@@ -113,21 +113,16 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         _LOGGER.debug(f"too_hot {too_hot}")
         _LOGGER.debug(f"too_cold {too_cold}")
 
+        self._attr_hvac_action = HVAC_ACTIONS[self._attr_hvac_mode]
 
-        if self._attr_hvac_mode == HVACMode.OFF:
-            return HVACAction.OFF
+        if self._attr_hvac_mode == HVACMode.COOL:
+            self._attr_hvac_action = HVACAction.COOLING if not too_cold else HVACAction.IDLE
 
-        elif self._attr_hvac_mode == HVACMode.COOL:
-            return HVACAction.COOLING if not too_cold else HVACAction.IDLE
+        if self._attr_hvac_mode == HVACMode.HEAT:
+            self._attr_hvac_action = HVACAction.HEATING if not too_hot else HVACAction.IDLE
 
-        elif self._attr_hvac_mode == HVACMode.HEAT:
-            return HVACAction.HEATING if not too_hot else HVACAction.IDLE
+        return self._attr_hvac_action
 
-        elif self._attr_hvac_mode == HVACMode.DRY:
-            return HVACAction.DRYING
-
-        elif self._attr_hvac_mode == HVACMode.FAN_ONLY:
-            return HVACAction.FAN
 
     async def async_added_to_hass(self):
         await super().async_added_to_hass()
@@ -237,7 +232,7 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         # --- Auto-Off Logic ---
         if is_auto_off:
             _LOGGER.info(f"{self.entity_id} is idle, turning off")
-            # self.hass.async_create_task(self.async_turn_off())
+            self.hass.async_create_task(self.async_turn_off())
             return
 
         # --- Auto-On Logic ---
@@ -252,5 +247,5 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
                 _LOGGER.info(
                     f"{self.entity_id} needs to resume {self._attr_hvac_mode} — turning on"
                 )
-                # self.hass.async_create_task(self.async_turn_on())
+                self.hass.async_create_task(self.async_turn_on())
                 return
