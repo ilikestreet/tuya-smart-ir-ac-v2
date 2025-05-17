@@ -36,7 +36,7 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
     def __init__(self, config, coordinator, registry):
         TuyaClimateEntity.__init__(self, config, registry)
         super().__init__(coordinator, context=self._climate_id)
-        self._attr_ac_mode = False
+        self._ac_mode = False
 
     @property
     def name(self):
@@ -164,7 +164,7 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         data = self.coordinator.data.get(self._climate_id)
         if not data:
             return
-        self._attr_hvac_mode = data.hvac_mode if self._attr_ac_mode else HVACMode.OFF
+        self._attr_hvac_mode = data.hvac_mode if self._ac_mode else HVACMode.OFF
         self._attr_target_temperature = data.temperature
         self._attr_fan_mode = data.fan_mode
         self._async_control_cooling()
@@ -207,12 +207,12 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         temperature = self.get_hvac_temperature(hvac_mode)
         fan_mode = self.get_hvac_fan_mode(hvac_mode)
         if hvac_mode is HVACMode.OFF:
-            self._attr_ac_mode = False
             self._attr_hvac_mode = HVACMode.OFF
+            self._ac_mode = False
             await self.coordinator.async_turn_off(self._infrared_id, self._climate_id)
         else:
+            self._ac_mode = True
             if self.get_hvac_power_on(self._attr_hvac_mode):
-                self._attr_ac_mode = True
                 await self.coordinator.async_turn_on(
                     self._infrared_id, self._climate_id
                 )
@@ -224,22 +224,25 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
     def _async_control_cooling(self):
         """Check if we need to turn ac on or off."""
         # Read updated values
-        current_temp = self.current_temperature
-        target_temp = self._attr_target_temperature
         fan_mode = self._attr_fan_mode
         hvac_mode = self._attr_hvac_mode
 
-        is_auto_off = self._attr_hvac_action == HVACAction.IDLE and hvac_mode in [
-            HVACMode.COOL,
-            HVACMode.HEAT,
-        ]
+        is_auto_off = (
+            self._ac_mode
+            and self._attr_hvac_action == HVACAction.IDLE
+            and hvac_mode
+            in [
+                HVACMode.COOL,
+                HVACMode.HEAT,
+            ]
+        )
 
         is_auto_on = (
-            self._attr_hvac_action == HVACAction.IDLE
+            self._ac_mode
+            and self._attr_hvac_action == HVACAction.IDLE
             and self._attr_hvac_mode in [HVACMode.COOL, HVACMode.HEAT]
         )
 
-        _LOGGER.debug(f"current_temperature {current_temp}")
         _LOGGER.debug(f"is_auto_on {is_auto_on}")
         _LOGGER.debug(f"is_auto_off {is_auto_off}")
 
@@ -251,12 +254,8 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
 
         # --- Auto-On Logic ---
         if is_auto_on:
-            should_heat = (
-                self._attr_hvac_mode == HVACMode.HEAT and current_temp < target_temp
-            )
-            should_cool = (
-                self._attr_hvac_mode == HVACMode.COOL and current_temp > target_temp
-            )
+            should_heat = self._attr_hvac_mode == HVACMode.HEAT and self.too_cold
+            should_cool = self._attr_hvac_mode == HVACMode.COOL and self.too_hot
             if should_heat or should_cool:
                 _LOGGER.info(
                     f"{self.entity_id} needs to resume {self._attr_hvac_mode} — turning on"
