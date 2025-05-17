@@ -164,7 +164,8 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         data = self.coordinator.data.get(self._climate_id)
         if not data:
             return
-        self._attr_hvac_mode = data.hvac_mode if self._ac_mode else HVACMode.OFF
+        # self._attr_hvac_mode = data.hvac_mode if self._ac_mode else HVACMode.OFF
+        self._attr_hvac_mode = data.hvac_mode if data.power else HVACMode.OFF
         self._attr_target_temperature = data.temperature
         self._attr_fan_mode = data.fan_mode
         self._async_control_cooling()
@@ -224,13 +225,11 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
     def _async_control_cooling(self):
         """Check if we need to turn ac on or off."""
         # Read updated values
-        fan_mode = self._attr_fan_mode
-        hvac_mode = self._attr_hvac_mode
 
         is_auto_off = (
             self._ac_mode
             and self._attr_hvac_action == HVACAction.IDLE
-            and hvac_mode
+            and self._attr_hvac_mode
             in [
                 HVACMode.COOL,
                 HVACMode.HEAT,
@@ -249,7 +248,7 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         # --- Auto-Off Logic ---
         if is_auto_off:
             _LOGGER.info(f"{self.entity_id} is idle, turning off")
-            self.hass.async_create_task(self.async_turn_off())
+            # self.hass.async_create_task(self.async_turn_off())
             return
 
         # --- Auto-On Logic ---
@@ -260,5 +259,5 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
                 _LOGGER.info(
                     f"{self.entity_id} needs to resume {self._attr_hvac_mode} — turning on"
                 )
-                self.hass.async_create_task(self.async_turn_on())
+                # self.hass.async_create_task(self.async_turn_on())
                 return
