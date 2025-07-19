@@ -115,13 +115,6 @@ TUYA_ENDPOINTS = {
     "EU": "https://openapi.tuyaeu.com",
     "US": "https://openapi.tuyaus.com",
     "IN": "https://openapi.tuyain.com",
-    "CN": "https://openapi.tuyacn.com"
-}
-
-HVAC_ACTIONS = {
-    HVACMode.COOL: HVACAction.COOLING,
-    HVACMode.HEAT: HVACAction.HEATING,
-    HVACMode.DRY: HVACAction.DRYING,
-    HVACMode.FAN_ONLY: HVACAction.FAN,
-    HVACMode.OFF: HVACAction.OFF
+    "CN": "https://openapi.tuyacn.com",
+    "SG": "https://openapi-sg.iotbing.com"
 }
