@@ -17,7 +17,7 @@ from homeassistant.const import (
 from homeassistant.const import EVENT_STATE_CHANGED, UnitOfTemperature
 from .const import (
     DOMAIN,
-    COORDINATOR,
+    CLIMATE_COORDINATOR,
     DEVICE_TYPE_CLIMATE,
     CONF_DEVICE_TYPE,
     HVAC_ACTIONS,
@@ -30,8 +30,8 @@ _LOGGER = logging.getLogger(__package__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     device_type = config_entry.data.get(CONF_DEVICE_TYPE, None)
-    if device_type == DEVICE_TYPE_CLIMATE:
-        coordinator = hass.data.get(DOMAIN).get(COORDINATOR)
+    if device_type == DEVICE_TYPE_CLIMATE: 
+        coordinator = hass.data.get(DOMAIN).get(CLIMATE_COORDINATOR)
         registry = entity_registry.async_get(hass)
         async_add_entities([TuyaClimate(config_entry.data, coordinator, registry)])
 
