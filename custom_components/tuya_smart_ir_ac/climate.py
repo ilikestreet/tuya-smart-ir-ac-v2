@@ -7,6 +7,7 @@ from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     FAN_AUTO,
     HVACMode,
+    HVACAction,
     ClimateEntityFeature
 )
 from homeassistant.const import (
@@ -225,41 +226,46 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         self._handle_coordinator_update()
 
     def _async_control_cooling(self):
-        """Check if we need to turn ac on or off."""
-        # Read updated values
+        """Check if we need to switch hvac mode based on temperature thresholds."""
 
-        is_auto_off = (
-            self._ac_mode
-            and self._attr_hvac_action == HVACAction.IDLE
-            and self._attr_hvac_mode
-            in [
-                HVACMode.COOL,
-                HVACMode.HEAT,
-            ]
-        )
+        _LOGGER.debug(f"_async_control_cooling: hvac_mode={self._attr_hvac_mode}, too_cold={self.too_cold}, too_hot={self.too_hot}")
 
-        is_auto_on = (
-            self._ac_mode
-            and self._attr_hvac_action == HVACAction.IDLE
-            and self._attr_hvac_mode in [HVACMode.COOL, HVACMode.HEAT]
-        )
-
-        _LOGGER.debug(f"is_auto_on {is_auto_on}")
-        _LOGGER.debug(f"is_auto_off {is_auto_off}")
-
-        # --- Auto-Off Logic ---
-        if is_auto_off:
-            _LOGGER.info(f"{self.entity_id} is idle, turning off")
-            # self.hass.async_create_task(self.async_turn_off())
+        # When mode is COOL and temperature is too cold, switch to FAN_ONLY mode
+        if self._attr_hvac_mode == HVACMode.COOL and self.too_cold:
+            _LOGGER.info(
+                f"{self.entity_id} too_cold reached (current={self.current_temperature}, "
+                f"target={self.target_temperature}), switching to FAN_ONLY mode"
+            )
+            self.hass.async_create_task(self._async_switch_to_fan_mode())
             return
 
-        # --- Auto-On Logic ---
-        if is_auto_on:
-            should_heat = self._attr_hvac_mode == HVACMode.HEAT and self.too_cold
-            should_cool = self._attr_hvac_mode == HVACMode.COOL and self.too_hot
-            if should_heat or should_cool:
-                _LOGGER.info(
-                    f"{self.entity_id} needs to resume {self._attr_hvac_mode} — turning on"
-                )
-                # self.hass.async_create_task(self.async_turn_on())
-                return
+        # When mode is FAN_ONLY and temperature is too hot, switch back to COOL mode
+        if self._attr_hvac_mode == HVACMode.FAN_ONLY and self.too_hot:
+            _LOGGER.info(
+                f"{self.entity_id} too_hot reached (current={self.current_temperature}, "
+                f"target={self.target_temperature}), switching back to COOL mode"
+            )
+            self.hass.async_create_task(self._async_switch_to_cool_mode())
+            return
+
+    async def _async_switch_to_fan_mode(self):
+        """Switch to FAN_ONLY mode when too_cold."""
+        _LOGGER.info(f"{self.entity_id} switching to FAN_ONLY mode")
+        temperature = self.get_hvac_temperature(HVACMode.FAN_ONLY)
+        fan_mode = self.get_hvac_fan_mode(HVACMode.FAN_ONLY)
+        await self.coordinator.async_set_hvac_mode(
+            self._infrared_id, self._climate_id, HVACMode.FAN_ONLY, temperature, fan_mode
+        )
+        self._attr_hvac_mode = HVACMode.FAN_ONLY
+        self.async_write_ha_state()
+
+    async def _async_switch_to_cool_mode(self):
+        """Switch back to COOL mode when too_hot."""
+        _LOGGER.info(f"{self.entity_id} switching back to COOL mode")
+        temperature = self.get_hvac_temperature(HVACMode.COOL)
+        fan_mode = self.get_hvac_fan_mode(HVACMode.COOL)
+        await self.coordinator.async_set_hvac_mode(
+            self._infrared_id, self._climate_id, HVACMode.COOL, temperature, fan_mode
+        )
+        self._attr_hvac_mode = HVACMode.COOL
+        self.async_write_ha_state()
