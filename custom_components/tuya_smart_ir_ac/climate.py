@@ -112,7 +112,7 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
     def too_hot(self):
         if self.current_temperature is None or self.target_temperature is None:
             return False
-        return float(self.current_temperature + 1.5) >= self.target_temperature
+        return float(self.current_temperature) >= self.target_temperature
 
     @property
     def hvac_action(self):
