@@ -131,6 +131,15 @@ TUYA_FAN_MODES = {
     "3": FAN_HIGH
 }
 
+HVAC_ACTIONS = {
+    HVACMode.OFF: HVACAction.OFF,
+    HVACMode.COOL: HVACAction.COOLING,
+    HVACMode.HEAT: HVACAction.HEATING,
+    HVACMode.DRY: HVACAction.DRYING,
+    HVACMode.FAN_ONLY: HVACAction.FAN,
+    HVACMode.AUTO: HVACAction.IDLE,
+}
+
 TUYA_ENDPOINTS = {
     "EU": "https://openapi.tuyaeu.com",
     "US": "https://openapi.tuyaus.com",
