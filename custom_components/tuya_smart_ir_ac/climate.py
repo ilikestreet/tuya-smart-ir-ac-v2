@@ -1,4 +1,5 @@
 import logging
+import time
 from homeassistant.core import callback
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -42,6 +43,7 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         TuyaClimateEntity.__init__(self, config, registry)
         super().__init__(coordinator, context=self._climate_id)
         self._ac_mode = False
+        self._last_mode_switch = 0
 
     @property
     def name(self):
@@ -229,6 +231,8 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
             )
         self._handle_coordinator_update()
 
+    _MODE_SWITCH_COOLDOWN = 10  # seconds
+
     def _async_control_cooling(self):
         """Check if we need to switch hvac mode based on temperature thresholds."""
 
@@ -236,6 +240,12 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
 
         # When mode is COOL and temperature is too cold, switch to FAN_ONLY mode
         if self._attr_hvac_mode == HVACMode.COOL and self.too_cold:
+            elapsed = time.time() - self._last_mode_switch
+            if elapsed < self._MODE_SWITCH_COOLDOWN:
+                _LOGGER.debug(
+                    f"{self.entity_id} too_cold but cooldown active ({elapsed:.1f}s / {self._MODE_SWITCH_COOLDOWN}s)"
+                )
+                return
             _LOGGER.info(
                 f"{self.entity_id} too_cold reached (current={self.current_temperature}, "
                 f"target={self.target_temperature}), switching to FAN_ONLY mode"
@@ -245,6 +255,12 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
 
         # When mode is FAN_ONLY and temperature is too hot, switch back to COOL mode
         if self._attr_hvac_mode == HVACMode.FAN_ONLY and self.too_hot:
+            elapsed = time.time() - self._last_mode_switch
+            if elapsed < self._MODE_SWITCH_COOLDOWN:
+                _LOGGER.debug(
+                    f"{self.entity_id} too_hot but cooldown active ({elapsed:.1f}s / {self._MODE_SWITCH_COOLDOWN}s)"
+                )
+                return
             _LOGGER.info(
                 f"{self.entity_id} too_hot reached (current={self.current_temperature}, "
                 f"target={self.target_temperature}), switching back to COOL mode"
@@ -261,6 +277,7 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
             self._infrared_id, self._climate_id, HVACMode.FAN_ONLY, temperature, fan_mode
         )
         self._attr_hvac_mode = HVACMode.FAN_ONLY
+        self._last_mode_switch = time.time()
         self.async_write_ha_state()
 
     async def _async_switch_to_cool_mode(self):
@@ -272,4 +289,5 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
             self._infrared_id, self._climate_id, HVACMode.COOL, temperature, fan_mode
         )
         self._attr_hvac_mode = HVACMode.COOL
+        self._last_mode_switch = time.time()
         self.async_write_ha_state()
