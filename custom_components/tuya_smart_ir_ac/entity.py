@@ -30,9 +30,11 @@ from .const import (
     CONF_DRY_MIN_TEMP,
     CONF_DRY_MIN_FAN,
     CONF_TEMP_UNIT,
+    CONF_TEMP_THRESHOLD,
     DEFAULT_MIN_TEMP,
     DEFAULT_MAX_TEMP,
     DEFAULT_PRECISION,
+    DEFAULT_TEMP_THRESHOLD,
     DEFAULT_HVAC_MODES,
     DEFAULT_FAN_MODES,
     DEFAULT_TEMP_HVAC_MODE,
@@ -74,6 +76,7 @@ class TuyaClimateEntity():
         self._fan_power_on = config.get(CONF_COMPATIBILITY_OPTIONS, {}).get(CONF_FAN_POWER_ON, DEFAULT_FAN_POWER_ON)
         self._dry_min_temp = config.get(CONF_COMPATIBILITY_OPTIONS, {}).get(CONF_DRY_MIN_TEMP, DEFAULT_DRY_MIN_TEMP)
         self._dry_min_fan = config.get(CONF_COMPATIBILITY_OPTIONS, {}).get(CONF_DRY_MIN_FAN, DEFAULT_DRY_MIN_FAN)
+        self._temp_threshold = config.get(CONF_TEMP_THRESHOLD, DEFAULT_TEMP_THRESHOLD)
 
     def tuya_device_info(self):
         return {

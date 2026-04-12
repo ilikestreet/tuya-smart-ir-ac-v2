@@ -106,7 +106,7 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
     def too_cold(self):
         if self.current_temperature is None or self.target_temperature is None:
             return False
-        return self.current_temperature < float(self.target_temperature - 1.5)
+        return self.current_temperature < float(self.target_temperature - self._temp_threshold)
 
     @property
     def too_hot(self):

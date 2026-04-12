@@ -46,6 +46,7 @@ from .const import (
     CONF_DRY_MIN_FAN,
     CONF_SENSOR_TYPES,
     CONF_TEMP_UNIT,
+    CONF_TEMP_THRESHOLD,
     DEFAULT_DEVICE_TYPES,
     DEFAULT_MIN_TEMP,
     DEFAULT_MAX_TEMP,
@@ -61,6 +62,7 @@ from .const import (
     DEFAULT_DRY_MIN_TEMP,
     DEFAULT_DRY_MIN_FAN,
     DEFAULT_POWER_ON_MODES,
+    DEFAULT_TEMP_THRESHOLD,
     SENSOR_TEMPERATURE,
     SENSOR_HUMIDITY,
     SENSOR_BATTERY
@@ -241,6 +243,7 @@ def climate_data(config=None):
         fan_power_on = vol.Optional(CONF_FAN_POWER_ON, default=DEFAULT_FAN_POWER_ON)
         dry_min_temp = vol.Optional(CONF_DRY_MIN_TEMP, default=DEFAULT_DRY_MIN_TEMP)
         dry_min_fan = vol.Optional(CONF_DRY_MIN_FAN, default=DEFAULT_DRY_MIN_FAN)
+        temp_threshold = vol.Optional(CONF_TEMP_THRESHOLD, default=DEFAULT_TEMP_THRESHOLD)
     else:
         if config.get(CONF_TEMPERATURE_SENSOR, None) is None:
             temperature_sensor = vol.Optional(CONF_TEMPERATURE_SENSOR)
@@ -265,6 +268,7 @@ def climate_data(config=None):
         fan_power_on = vol.Optional(CONF_FAN_POWER_ON, default=config.get(CONF_COMPATIBILITY_OPTIONS, {}).get(CONF_FAN_POWER_ON, DEFAULT_FAN_POWER_ON))        
         dry_min_temp = vol.Optional(CONF_DRY_MIN_TEMP, default=config.get(CONF_COMPATIBILITY_OPTIONS, {}).get(CONF_DRY_MIN_TEMP, DEFAULT_DRY_MIN_TEMP))
         dry_min_fan = vol.Optional(CONF_DRY_MIN_FAN, default=config.get(CONF_COMPATIBILITY_OPTIONS, {}).get(CONF_DRY_MIN_FAN, DEFAULT_DRY_MIN_FAN))
+        temp_threshold = vol.Optional(CONF_TEMP_THRESHOLD, default=config.get(CONF_TEMP_THRESHOLD, DEFAULT_TEMP_THRESHOLD))
 
     return {
         temperature_sensor: EntitySelector(
@@ -291,6 +295,9 @@ def climate_data(config=None):
         temp_hvac_mode: BooleanSelector(),
         fan_hvac_mode: BooleanSelector(),
         extra_sensors: BooleanSelector(),
+        temp_threshold: NumberSelector(
+            NumberSelectorConfig(min=0.5, max=5.0, step=0.5, mode=NumberSelectorMode.BOX)
+        ),
         vol.Required(CONF_COMPATIBILITY_OPTIONS): data_entry_flow.section(
             vol.Schema(
                 {
