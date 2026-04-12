@@ -296,7 +296,7 @@ def climate_data(config=None):
         fan_hvac_mode: BooleanSelector(),
         extra_sensors: BooleanSelector(),
         temp_threshold: NumberSelector(
-            NumberSelectorConfig(min=0.5, max=5.0, step=0.5, mode=NumberSelectorMode.BOX)
+            NumberSelectorConfig(min=0.5, max=5.0, step=0.1, mode=NumberSelectorMode.BOX)
         ),
         vol.Required(CONF_COMPATIBILITY_OPTIONS): data_entry_flow.section(
             vol.Schema(

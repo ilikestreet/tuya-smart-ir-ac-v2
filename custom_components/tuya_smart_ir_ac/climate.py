@@ -154,6 +154,7 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
     @callback
     async def _async_handle_event(self, event):
         if event.data.get(ATTR_ENTITY_ID) in [self._temperature_sensor, self._humidity_sensor]:
+            self._async_control_cooling()
             self.async_write_ha_state()
 
     @callback
@@ -162,8 +163,10 @@ class TuyaClimate(ClimateEntity, RestoreEntity, CoordinatorEntity, TuyaClimateEn
         data = self.coordinator.data.get(self._climate_id)
         if not data:
             return
-        # self._attr_hvac_mode = data.hvac_mode if self._ac_mode else HVACMode.OFF
-        self._attr_hvac_mode = data.hvac_mode if data.power else HVACMode.OFF
+        # Skip overwriting hvac_mode from device data while a mode switch cooldown
+        # is active — the IR command may not have been picked up by the device yet.
+        if time.time() - self._last_mode_switch >= self._MODE_SWITCH_COOLDOWN:
+            self._attr_hvac_mode = data.hvac_mode if data.power else HVACMode.OFF
         self._attr_target_temperature = data.temperature
         self._attr_fan_mode = data.fan_mode
         self._async_control_cooling()
